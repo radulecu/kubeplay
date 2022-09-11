@@ -13,9 +13,8 @@ Example:
     sudo mv ./kubectl /usr/local/bin/kubectl
     kubectl version --client
 
-### Kubernetes/Minikube
+### Install Minikube
 
-#### Install Minikube
 Minikube is installed and runs directly on a local Linux, macOS, or Windows workstation. However, in order to fully take advantage of all the features Minikube has to offer, a Type-2 Hypervisor should be installed on the local workstation, to run in conjunction with Minikube.
 Alternatively you can also install docker and k8s will run on it.
 
@@ -48,7 +47,8 @@ or you can start it as a [multi-node][https://minikube.sigs.k8s.io/docs/tutorial
 #### Start Dashboard
 
     minikube dashboard
-### Start Minikube and kubernetes proxy
+
+#### Start Minikube and kubernetes proxy
 
 	nohup kubectl proxy &
 	xdg-open "http://localhost:8001/api/v1/namespaces"
@@ -74,6 +74,125 @@ To authenticate use TOKEN from above.
     TOKEN=$(kubectl describe secret -n kube-system $(kubectl get secrets -n kube-system | grep default | cut -f1 -d ' ') | grep -E '^token' | cut -f2 -d':' | tr -d '\t' | tr -d " ")
     APISERVER=$(kubectl config view | grep https | cut -f 2- -d ":" | tr -d " ")
     curl $APISERVER --header "Authorization: Bearer $TOKEN" --insecure
+
+### Manual install using vagrant and virtualbox
+
+Read more at https://medium.com/swlh/setup-own-kubernetes-cluster-via-virtualbox-99a82605bfcc
+
+You need to install vagrant and virtualbox.
+vagrant files are in vagrant/k8s-cluster
+
+    vagrant up
+
+#### Configure Master
+
+Connect to the master
+
+    vagrant ssh master
+
+Initialise the master then follow the steps for configuration
+
+    sudo su
+
+    kubeadm init --apiserver-advertise-address 192.168.33.13 --pod-network-cidr=10.244.0.0/16
+
+    mkdir -p $HOME/.kube
+    sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+    sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+Check status:
+
+    kubectl get nodes
+
+Status will be not ready because we did not apply any network plugin.
+
+#### Configure Network and Network policy addon:
+
+* Weave Net 
+
+https://www.weave.works/docs/net/latest/kubernetes/kube-addon/
+
+    kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+
+* Flannel:
+
+
+    kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+#### Configure  worker nodes
+
+Connect to workers;
+
+    vagrant ssh worker-1
+    
+Run the command below as root with the token provided by the master
+
+    kubeadm join 192.168.33.13:6443 --token bx86lo.agyszwr53ow5y53u \
+    --discovery-token-ca-cert-hash sha256:536b10417f411de9ff9f11cb83d286f9217f5031845df93355b3a6a5ed96c066
+
+#### Testing
+
+    kubectl create deployment nginx --image=nginx --port 80
+    kubectl expose deployment nginx --port 80 --type=NodePort
+    echo service started with port $(kubectl get services | grep nginx | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
+    echo curl localhost:$(kubectl get services | grep nginx | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
+    curl localhost:$(kubectl get services | grep nginx | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
+
+    kubectl create deployment webserver --image=nginx --port 80 --replicas=5
+    kubectl expose deployment webserver --port 80 --type=NodePort
+    echo service started with port $(kubectl get services | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
+    echo curl localhost:$(kubectl get services | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
+    kubectl get webserver | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/'
+
+#### Create dashboard
+
+Read more at https://github.com/kubernetes/dashboard
+
+Install dashboard:
+
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+
+To access Dashboard from your local workstation you must create a secure channel to your Kubernetes cluster. Run the following command:
+
+    kubectl proxy
+
+You can now access it from here
+
+Read more at http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/#/login
+
+To have access to the cluster you need to create a service account and a cluster role binding.
+Create a file named 
+
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: admin-user
+      namespace: kubernetes-dashboard
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: admin-user
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: cluster-admin
+    subjects:
+    - kind: ServiceAccount
+      name: admin-user
+      namespace: kubernetes-dashboard
+
+Get the token for the user:
+
+    kubectl -n kubernetes-dashboard create token admin-user
+
+Although not recommended in production you can access the dashboard from outside the cluster:
+
+Read more at https://unixcop.com/how-to-access-kubernetes-dashboard-from-outside-cluster
+
+    kubectl -n kube-system edit service kubernetes-dashboard
+
+Change type of service From ClusteringIp NodePort
 
 ## Usage
 
