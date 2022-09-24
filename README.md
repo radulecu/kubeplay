@@ -94,7 +94,9 @@ Initialise the master then follow the steps for configuration
 
     sudo su
 
-    kubeadm init --apiserver-advertise-address 192.168.33.13 --pod-network-cidr=10.244.0.0/16
+    kubeadm init --apiserver-advertise-address 192.168.33.13 --pod-network-cidr=10.244.0.0/16 | tee  kubeadm-init.txt
+    
+    sudo chown $(id -u):$(id -g) $HOME/kubeadm-init.txt
 
     mkdir -p $HOME/.kube
     sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
@@ -135,14 +137,14 @@ Run the command below as root with the token provided by the master
     kubectl create deployment nginx --image=nginx --port 80
     kubectl expose deployment nginx --port 80 --type=NodePort
     echo service started with port $(kubectl get services | grep nginx | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
-    echo curl localhost:$(kubectl get services | grep nginx | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
-    curl localhost:$(kubectl get services | grep nginx | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
+    echo curl 192.168.33.13:$(kubectl get services | grep nginx | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
+    curl 192.168.33.13:$(kubectl get services | grep nginx | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
 
     kubectl create deployment webserver --image=nginx --port 80 --replicas=5
     kubectl expose deployment webserver --port 80 --type=NodePort
     echo service started with port $(kubectl get services | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
-    echo curl localhost:$(kubectl get services | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
-    kubectl get webserver | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/'
+    echo curl 192.168.33.13:$(kubectl get services | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
+    curl 192.168.33.13:$(kubectl get services | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
 
 #### Create dashboard
 

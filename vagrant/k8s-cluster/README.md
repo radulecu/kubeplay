@@ -7,6 +7,8 @@ spin up three node cluster
 * 192.168.33.13 master
 * 192.168.33.14 worker-1
 * 192.168.33.15 worker-2
+* 192.168.33.16 worker-3
+* 192.168.33.17 worker-4
 
 see the corresponding post from [here](https://baykara.medium.com/setup-own-kubernetes-cluster-via-virtualbox-99a82605bfcc)
 

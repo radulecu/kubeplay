@@ -17,6 +17,8 @@ cat >> /etc/hosts <<EOF
 192.168.33.13 master
 192.168.33.14 worker-1
 192.168.33.15 worker-2
+192.168.33.16 worker-3
+192.168.33.17 worker-4
 EOF
 
 apt-get update 
