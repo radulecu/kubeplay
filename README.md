@@ -116,8 +116,13 @@ https://www.weave.works/docs/net/latest/kubernetes/kube-addon/
 
     kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
 
-* Flannel:
+* Antrea
 
+https://github.com/antrea-io/antrea/blob/main/docs/getting-started.md
+
+    kubectl apply -f https://raw.githubusercontent.com/antrea-io/antrea/main/build/yamls/antrea.yml
+
+* Flannel:
 
     kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 
