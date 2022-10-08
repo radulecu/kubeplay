@@ -20,24 +20,23 @@ vagrant scp master:/home/vagrant/.kube ~
 vagrant scp master:/home/vagrant/kubeadm-join.sh ~
 
 
-vagrant up worker-1
-vagrant scp ~/.kube worker-1:/home/vagrant/
-vagrant scp ~/kubeadm-join.sh worker-1:/home/vagrant/
-vagrant ssh worker-1 -c "sudo bash kubeadm-join.sh"
+for i in worker-1,192.168.33.14 worker-2,192.168.33.15 worker-3,192.168.33.16 worker-4,192.168.33.17; do
+  worker=${i%,*};
+  ip=${i#*,};
 
-vagrant up worker-2
-vagrant scp ~/.kube worker-2:/home/vagrant/
-vagrant scp ~/kubeadm-join.sh worker-2:/home/vagrant/
-vagrant ssh worker-2 -c "sudo bash kubeadm-join.sh"
+  vagrant up $worker
+  vagrant scp ~/.kube $worker:/home/vagrant/
+  vagrant scp ~/kubeadm-join.sh $worker:/home/vagrant/
+  vagrant ssh $worker -c "sudo bash kubeadm-join.sh"
 
-vagrant up worker-3
-vagrant scp ~/.kube worker-3:/home/vagrant/
-vagrant scp ~/kubeadm-join.sh worker-3:/home/vagrant/
-vagrant ssh worker-3 -c "sudo bash kubeadm-join.sh"
-
-vagrant up worker-4
-vagrant scp ~/.kube worker-4:/home/vagrant/
-vagrant scp ~/kubeadm-join.sh worker-4:/home/vagrant/
-vagrant ssh worker-4 -c "sudo bash kubeadm-join.sh"
+  for i in pv1 pv2; do
+    vagrant ssh $worker -c "sudo mkdir -p /mnt/nfs_pv/$i"
+    vagrant ssh $worker -c "sudo chmod ugo+rwx /mnt/nfs_pv/$i"
+    vagrant ssh $worker -c "sudo chown -R nobody:nogroup /mnt/nfs_pv/$i"
+    vagrant ssh $worker -c "echo \"/mnt/nfs_pv/$i $ip/24(rw,sync,no_subtree_check)\" | sudo tee -a /etc/exports"
+  done
+  vagrant ssh $worker -c "sudo exportfs -a"
+  vagrant ssh $worker -c "sudo systemctl restart nfs-kernel-server"
+done
 
 echo done;
