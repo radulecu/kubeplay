@@ -6,4 +6,6 @@ bash createMaster.sh
 
 bash createWorkers.sh
 
-echo done;
+bash postCreate.sh
+
+echo done

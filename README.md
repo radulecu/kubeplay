@@ -135,19 +135,7 @@ Connect to workers;
 Run the command below as root with the token provided by the master
 
     kubeadm join 192.168.33.13:6443 --token bx86lo.agyszwr53ow5y53u \
-    --discovery-token-ca-cert-hash sha256:536b10417f411de9ff9f11cb83d286f9217f5031845df93355b3a6a5ed96c066
-
-#### Configure nfs mount for NFS Persistent Volume
-
-https://linuxhint.com/install-and-configure-nfs-server-ubuntu-22-04/
-
-    apt-get install -y nfs-kernel-server
-    mkdir -p /mnt/nfs_share/pv1
-    mkdir -p /mnt/nfs_share/pv2
-    chmod ugo+rwx -R /mnt/nfs_share
-    echo "/mnt/nfs_share 192.168.33.14/24(rw,sync,no_subtree_check)" >>/etc/exports
-    exportfs -a
-    systemctl restart nfs-kernel-server
+      --discovery-token-ca-cert-hash sha256:536b10417f411de9ff9f11cb83d286f9217f5031845df93355b3a6a5ed96c066
 
 #### Testing
 
@@ -162,6 +150,39 @@ https://linuxhint.com/install-and-configure-nfs-server-ubuntu-22-04/
     echo service started with port $(kubectl get services | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
     echo curl 192.168.33.13:$(kubectl get services | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
     curl 192.168.33.13:$(kubectl get services | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
+
+#### Configure nfs mount for NFS Persistent Volume
+
+https://linuxhint.com/install-and-configure-nfs-server-ubuntu-22-04/
+
+    apt-get install -y nfs-kernel-server
+    mkdir -p /mnt/nfs_share/pv1
+    mkdir -p /mnt/nfs_share/pv2
+    chmod ugo+rwx -R /mnt/nfs_share
+    echo "/mnt/nfs_share 192.168.33.14/24(rw,sync,no_subtree_check)" >>/etc/exports
+    exportfs -a
+    systemctl restart nfs-kernel-server
+
+#### Configure ingress
+
+https://kubernetes.github.io/ingress-nginx/deploy/#quick-start
+
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.5.1/deploy/static/provider/cloud/deploy.yaml
+    kubectl get pods --namespace=ingress-nginx
+    kubectl wait --namespace ingress-nginx \
+      --for=condition=ready pod \
+      --selector=app.kubernetes.io/component=controller \
+      --timeout=120s
+
+Local testing:
+
+    kubectl create deployment demo --image=httpd --port=80
+    kubectl expose deployment demo
+    kubectl create ingress demo-localhost --class=nginx \
+      --rule="demo.localdev.me/*=demo:80"
+    kubectl port-forward --namespace=ingress-nginx service/ingress-nginx-controller 8080:80
+
+At this point, if you access http://demo.localdev.me:8080/, you should see an HTML page telling you "It works!".
 
 #### Create dashboard
 
