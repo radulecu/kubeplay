@@ -1,3 +1,13 @@
+NETWORK = "192.168.33."
+MASTER_RAM_SIZE=2048
+WORKER_RAM_SIZE=8192
+HOSTS = {
+   #VM_NAME      IP_ADDRESS    RAM(mb)
+   "worker-1" => [NETWORK+"14", WORKER_RAM_SIZE],
+   "worker-2" => [NETWORK+"15", WORKER_RAM_SIZE],
+   "worker-3" => [NETWORK+"16", WORKER_RAM_SIZE],
+   "worker-4" => [NETWORK+"17", WORKER_RAM_SIZE],
+}
 
 Vagrant.configure("2") do |config|
     config.vm.box = "ubuntu/bionic64"
@@ -9,7 +19,7 @@ Vagrant.configure("2") do |config|
             w.vm.network "forwarded_port", guest: i, host: i
         end
         w.vm.provider "virtualbox" do |vb|
-            vb.memory = "2048"
+            vb.memory = MASTER_RAM_SIZE
             vb.cpus = 2
             vb.name = "master"
         end
@@ -23,80 +33,25 @@ Vagrant.configure("2") do |config|
         SHELL
     end
 
-    config.vm.box = "ubuntu/bionic64"
-    config.vm.define "worker-1" do | w |
-        w.vm.hostname = "worker-1"
-        w.vm.network "private_network", ip: "192.168.33.14"
-        w.vm.provider "virtualbox" do |vb|
-            vb.memory = "8192"
-            vb.cpus = 2
-            vb.name = "worker-1"
+    HOSTS.each do |hostname, cfg|
+        ipaddr, ram = cfg
+        config.vm.box = "ubuntu/bionic64"
+        config.vm.define hostname do | w |
+            w.vm.hostname = hostname
+            w.vm.network "private_network", ip: ipaddr
+            w.vm.provider "virtualbox" do |vb|
+                vb.memory = ram
+                vb.cpus = 2
+                vb.name = hostname
+            end
+            w.vm.provision "setup-hosts", :type => "shell", :path => "k8s-setup-master.sh" do |s|
+            end
+            w.vm.provision "shell", inline: <<-SHELL
+                apt-get update
+                apt-get install -y git wget vim curl nfs-kernel-server
+                modprobe br_netfilter
+                echo 1 > /proc/sys/net/ipv4/ip_forward
+            SHELL
         end
-        w.vm.provision "setup-hosts", :type => "shell", :path => "k8s-setup-master.sh" do |s|
-        end
-        w.vm.provision "shell", inline: <<-SHELL
-            apt-get update
-            apt-get install -y git wget vim curl nfs-kernel-server
-            modprobe br_netfilter
-            echo 1 > /proc/sys/net/ipv4/ip_forward
-        SHELL
-    end
-
-    config.vm.box = "ubuntu/bionic64"
-    config.vm.define "worker-2" do | w |
-        w.vm.hostname = "worker-2"
-        w.vm.network "private_network", ip: "192.168.33.15"
-        w.vm.provider "virtualbox" do |vb|
-            vb.memory = "8192"
-            vb.cpus = 2
-            vb.name = "worker-2"
-        end
-        w.vm.provision "setup-hosts", :type => "shell", :path => "k8s-setup-master.sh" do |s|
-        end
-        w.vm.provision "shell", inline: <<-SHELL
-            apt-get update
-            apt-get install -y git wget vim curl nfs-kernel-server
-            modprobe br_netfilter
-            echo 1 > /proc/sys/net/ipv4/ip_forward
-        SHELL
-    end
-
-    config.vm.box = "ubuntu/bionic64"
-    config.vm.define "worker-3" do | w |
-        w.vm.hostname = "worker-3"
-        w.vm.network "private_network", ip: "192.168.33.16"
-        w.vm.provider "virtualbox" do |vb|
-            vb.memory = "8192"
-            vb.cpus = 2
-            vb.name = "worker-3"
-        end
-        w.vm.provision "setup-hosts", :type => "shell", :path => "k8s-setup-master.sh" do |s|
-        end
-        w.vm.provision "shell", inline: <<-SHELL
-            apt-get update
-            apt-get install -y git wget vim curl nfs-kernel-server
-            modprobe br_netfilter
-            echo 1 > /proc/sys/net/ipv4/ip_forward
-        SHELL
-    end
-
-    config.vm.box = "ubuntu/bionic64"
-    config.vm.define "worker-4" do | w |
-        w.vm.hostname = "worker-4"
-        w.vm.network "private_network", ip: "192.168.33.17"
-
-        w.vm.provider "virtualbox" do |vb|
-            vb.memory = "8192"
-            vb.cpus = 2
-            vb.name = "worker-4"
-        end
-        w.vm.provision "setup-hosts", :type => "shell", :path => "k8s-setup-master.sh" do |s|
-        end
-        w.vm.provision "shell", inline: <<-SHELL
-            apt-get update
-            apt-get install -y git wget vim curl nfs-kernel-server
-            modprobe br_netfilter
-            echo 1 > /proc/sys/net/ipv4/ip_forward
-        SHELL
     end
 end
