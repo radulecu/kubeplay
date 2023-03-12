@@ -17,4 +17,5 @@ kubectl wait --namespace ingress-nginx \
 #kubectl expose deployment demo
 #kubectl create ingress demo-localhost --class=nginx \
 #  --rule="demo.localdev.me/*=demo:80"
-kubectl port-forward --namespace=ingress-nginx service/ingress-nginx-controller 8080:80
+#kubectl port-forward --namespace=ingress-nginx service/ingress-nginx-controller 8080:80
+kubectl apply -f ingress-service.yaml
