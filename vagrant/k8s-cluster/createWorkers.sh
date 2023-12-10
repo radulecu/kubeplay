@@ -1,10 +1,10 @@
 #!/bin/bash
 
 for i in \
-    worker-1,192.168.33.14,eu-west-1,a \
-    worker-2,192.168.33.15,eu-west-2,a \
-    worker-3,192.168.33.16,eu-west-1,b \
-    worker-4,192.168.33.17,eu-west-2,b \
+    worker-1,192.168.56.14,eu-west-1,a \
+    worker-2,192.168.56.15,eu-west-2,a \
+    worker-3,192.168.56.16,eu-west-1,b \
+    worker-4,192.168.56.17,eu-west-2,b \
     ;do
 
   array=($(echo $i | tr ',' "\n"))

@@ -80,6 +80,15 @@ To authenticate use TOKEN from above.
 Read more at https://medium.com/swlh/setup-own-kubernetes-cluster-via-virtualbox-99a82605bfcc
 
 You need to install vagrant and virtualbox.
+
+To simplify this all mentioned above is defined already in some scripts that will do this automatically.
+
+Just follow steps from [README.md](vagrant%2Fk8s-cluster%2FREADME.md) and then go to "Additional configuration"
+
+Otherwise you can follow the steps
+
+#### Create cluster
+
 vagrant files are in vagrant/k8s-cluster
 
     vagrant up
@@ -94,7 +103,7 @@ Initialise the master then follow the steps for configuration
 
     sudo su
 
-    kubeadm init --apiserver-advertise-address 192.168.33.13 --pod-network-cidr=10.244.0.0/16 | tee  kubeadm-init.txt
+    kubeadm init --apiserver-advertise-address 192.168.56.13 --pod-network-cidr=10.244.0.0/16 | tee  kubeadm-init.txt
     
     sudo chown $(id -u):$(id -g) $HOME/kubeadm-init.txt
 
@@ -134,7 +143,7 @@ Connect to workers;
     
 Run the command below as root with the token provided by the master
 
-    kubeadm join 192.168.33.13:6443 --token bx86lo.agyszwr53ow5y53u \
+    kubeadm join 192.168.56.13:6443 --token bx86lo.agyszwr53ow5y53u \
       --discovery-token-ca-cert-hash sha256:536b10417f411de9ff9f11cb83d286f9217f5031845df93355b3a6a5ed96c066
 
 #### Testing
@@ -142,24 +151,26 @@ Run the command below as root with the token provided by the master
     kubectl create deployment nginx --image=nginx --port 80
     kubectl expose deployment nginx --port 80 --type=NodePort
     echo service started with port $(kubectl get services | grep nginx | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
-    echo curl 192.168.33.13:$(kubectl get services | grep nginx | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
-    curl 192.168.33.13:$(kubectl get services | grep nginx | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
+    echo curl 192.168.56.13:$(kubectl get services | grep nginx | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
+    curl 192.168.56.13:$(kubectl get services | grep nginx | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
 
     kubectl create deployment webserver --image=nginx --port 80 --replicas=5
     kubectl expose deployment webserver --port 80 --type=NodePort
     echo service started with port $(kubectl get services | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
-    echo curl 192.168.33.13:$(kubectl get services | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
-    curl 192.168.33.13:$(kubectl get services | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
+    echo curl 192.168.56.13:$(kubectl get services | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
+    curl 192.168.56.13:$(kubectl get services | grep webserver | awk '{print $5}' | sed -E 's/80:(.*)\/TCP/\1/')
 
 #### Configure nfs mount for NFS Persistent Volume
 
 https://linuxhint.com/install-and-configure-nfs-server-ubuntu-22-04/
 
+This can be done inside the worker nodes
+
     apt-get install -y nfs-kernel-server
     mkdir -p /mnt/nfs_share/pv1
     mkdir -p /mnt/nfs_share/pv2
     chmod ugo+rwx -R /mnt/nfs_share
-    echo "/mnt/nfs_share 192.168.33.14/24(rw,sync,no_subtree_check)" >>/etc/exports
+    echo "/mnt/nfs_share 192.168.56.14/24(rw,sync,no_subtree_check)" >>/etc/exports
     exportfs -a
     systemctl restart nfs-kernel-server
 
@@ -184,6 +195,8 @@ Local testing:
 
 At this point, if you access http://demo.localdev.me:8080/, you should see an HTML page telling you "It works!".
 
+### Additional configuration
+
 #### Create dashboard
 
 Read more at https://github.com/kubernetes/dashboard
@@ -196,12 +209,10 @@ To access Dashboard from your local workstation you must create a secure channel
 
     kubectl proxy
 
-You can now access it from here
-
-Read more at http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/#/login
+You can now access it from here: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/#/login
 
 To have access to the cluster you need to create a service account and a cluster role binding.
-Create a file named 
+Create a file called for example admin-user-config.yaml
 
     apiVersion: v1
     kind: ServiceAccount
@@ -222,11 +233,15 @@ Create a file named
       name: admin-user
       namespace: kubernetes-dashboard
 
+Apply the file:
+
+    kubectl apply -f admin-user-config.yaml
+
 Get the token for the user:
 
     kubectl -n kubernetes-dashboard create token admin-user
 
-Although not recommended in production you can access the dashboard from outside the cluster:
+Although not recommended in production you can access the dashboard from outside the cluster without the proxy:
 
 Read more at https://unixcop.com/how-to-access-kubernetes-dashboard-from-outside-cluster
 
@@ -261,6 +276,7 @@ Change type of service From ClusteringIp NodePort
             image: nginx:1.15.11
             ports:
             - containerPort: 80
+
 #### Pod sample
 
     apiVersion: v1
@@ -275,6 +291,26 @@ Change type of service From ClusteringIp NodePort
         image: nginx:1.15.11
         ports:
         - containerPort: 80
+
+#### Cronjob Sample
+
+    apiVersion: batch/v1
+    kind: CronJob
+    metadata:
+      name: hello
+    spec:
+      schedule: "* * * * *"
+      jobTemplate:
+        spec:
+          template:
+            spec:
+              containers:
+              - name: hello
+                image: hello-world
+                imagePullPolicy: IfNotPresent
+              restartPolicy: OnFailure
+
+
 
 ### Kubectl commands
 

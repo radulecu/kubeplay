@@ -14,11 +14,11 @@ sed -i -e 's/#DNS=/DNS=8.8.8.8/' /etc/systemd/resolved.conf
 
 # Update /etc/hosts about other hosts
 cat >> /etc/hosts <<EOF
-192.168.33.13 master
-192.168.33.14 worker-1
-192.168.33.15 worker-2
-192.168.33.16 worker-3
-192.168.33.17 worker-4
+192.168.56.13 master
+192.168.56.14 worker-1
+192.168.56.15 worker-2
+192.168.56.16 worker-3
+192.168.56.17 worker-4
 EOF
 
 apt-get update 
